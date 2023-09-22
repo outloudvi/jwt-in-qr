@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Validator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+        integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        * {
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+
+        #app {
+            text-align: center;
+            background-color: #ddd;
+            max-width: max(600px, 80vw);
+            padding: 10px;
+            border-radius: 10px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #result {
+            margin-top: 10px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>Ticket Validator</h1>
+        <input id="input" type="text" />
+        <div id="result"></div>
+        <div id="qrCode">
+        </div>
+
+        <script type="module">
+            import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
+
+            // new QRCode(document.querySelector("#qrCode"), "http://jindo.dev.naver.com/collie");
+            const textInput = document.querySelector('#input')
+            const divResult = document.querySelector('#result')
+            const jwtHeader = btoa(JSON.stringify(
+                {
+                    "alg": "HS256",
+                    "typ": "JWT"
+                }
+            ))
+
+            let CURRENT_SECRET = ''
+
+            const base64ToUint8Array = x => Uint8Array.from(atob(x).split('').map(x => x.charCodeAt(0)))
+            const buildEmptyUrl = () => {
+                const u = new URL(String(document.location))
+                u.searchParams.delete('s')
+                return String(u)
+            }
+
+            function loadSecret() {
+                if (!window.localStorage) return
+                const secret = window.localStorage.getItem('secret')
+                if (secret === null) return
+                CURRENT_SECRET = secret
+            }
+
+            function setSecret(secret) {
+                history.pushState(null, "", buildEmptyUrl())
+                if (!window.localStorage) {
+                    alert("localStorage is not supported - cannot save the secret!")
+                }
+                window.localStorage.setItem('secret', secret)
+                loadSecret()
+            }
+
+            async function validateCode() {
+                divResult.style.color = ""
+                divResult.style.backgroundColor = ""
+                const text = textInput.value
+                if (text.split('.').length !== 2) {
+                    divResult.innerText = "Waiting for a code..."
+                    return
+                }
+                divResult.innerText = "Validating..."
+
+                const jwt = jwtHeader + '.' + text
+                const key = base64ToUint8Array(CURRENT_SECRET)
+
+                const { payload } = await jose.jwtVerify(jwt, key, {
+                    algorithms: ["HS256"]
+                }).catch(err => {
+                    console.log(err)
+                    return {}
+                })
+
+                if (payload) {
+                    // success
+                    divResult.style.backgroundColor = "greenyellow"
+                    divResult.innerText = `Validated: ${JSON.stringify(payload)}`
+                } else {
+                    // failed
+                    divResult.style.backgroundColor = "red"
+                    divResult.style.color = "white"
+                    divResult.innerText = "Not a valid code!"
+                }
+
+            }
+
+            function makeQRCode() {
+
+            }
+
+            (() => {
+                const url = new URL(String(document.location))
+
+                const secret = url.searchParams.get('s')
+                if (secret) {
+                    setSecret(secret)
+                } else {
+                    loadSecret()
+                }
+
+                if (!CURRENT_SECRET) {
+                    alert("Please set the secret!")
+                }
+
+                const code = url.searchParams.get('q')
+                if (code) {
+                    textInput.value = code
+                    validateCode()
+                }
+
+                textInput.addEventListener("input", validateCode)
+            })()
+
+        </script>
+</body>
+
+</html>
