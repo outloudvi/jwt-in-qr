@@ -5,9 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket Validator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
-        integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         * {
             font-family: -apple-system, system-ui, sans-serif;
@@ -36,11 +33,10 @@
         <h1>Ticket Validator</h1>
         <input id="input" type="text" />
         <div id="result"></div>
-        <div id="qrCode">
-        </div>
 
         <script type="module">
             import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
+            import { loadOrSetSecret, base64ToUint8Array, buildEmptyUrl } from './utils.js'
 
             // new QRCode(document.querySelector("#qrCode"), "http://jindo.dev.naver.com/collie");
             const textInput = document.querySelector('#input')
@@ -51,31 +47,6 @@
                     "typ": "JWT"
                 }
             ))
-
-            let CURRENT_SECRET = ''
-
-            const base64ToUint8Array = x => Uint8Array.from(atob(x).split('').map(x => x.charCodeAt(0)))
-            const buildEmptyUrl = () => {
-                const u = new URL(String(document.location))
-                u.searchParams.delete('s')
-                return String(u)
-            }
-
-            function loadSecret() {
-                if (!window.localStorage) return
-                const secret = window.localStorage.getItem('secret')
-                if (secret === null) return
-                CURRENT_SECRET = secret
-            }
-
-            function setSecret(secret) {
-                history.pushState(null, "", buildEmptyUrl())
-                if (!window.localStorage) {
-                    alert("localStorage is not supported - cannot save the secret!")
-                }
-                window.localStorage.setItem('secret', secret)
-                loadSecret()
-            }
 
             async function validateCode() {
                 divResult.style.color = ""
@@ -88,7 +59,7 @@
                 divResult.innerText = "Validating..."
 
                 const jwt = jwtHeader + '.' + text
-                const key = base64ToUint8Array(CURRENT_SECRET)
+                const key = base64ToUint8Array(window.CURRENT_SECRET)
 
                 const { payload } = await jose.jwtVerify(jwt, key, {
                     algorithms: ["HS256"]
@@ -110,23 +81,8 @@
 
             }
 
-            function makeQRCode() {
-
-            }
-
             (() => {
-                const url = new URL(String(document.location))
-
-                const secret = url.searchParams.get('s')
-                if (secret) {
-                    setSecret(secret)
-                } else {
-                    loadSecret()
-                }
-
-                if (!CURRENT_SECRET) {
-                    alert("Please set the secret!")
-                }
+                loadOrSetSecret()
 
                 const code = url.searchParams.get('q')
                 if (code) {

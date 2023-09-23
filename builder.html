@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Builder</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+        integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        * {
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+
+        #app {
+            text-align: center;
+            background-color: #ddd;
+            max-width: max(600px, 80vw);
+            padding: 10px;
+            border-radius: 10px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #qrCode img {
+            margin: 0 auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>Ticket Builder</h1>
+        <input id="input" type="text" />
+        <div id="qrCode"></div>
+
+        <script type="module">
+            import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
+            import { buildSignedUrl, loadOrSetSecret, base64ToUint8Array, jsonParse } from './utils.js'
+
+
+            const textInput = document.querySelector('#input')
+            const qrCodeArea = document.querySelector('#qrCode')
+
+            const ALG = "HS256"
+
+            async function makeQRCode() {
+                const payload = jsonParse(textInput.value)
+                if (payload === null) {
+                    return
+                }
+
+                const secret = base64ToUint8Array(window.CURRENT_SECRET)
+                const jwt = await new jose.SignJWT(payload)
+                    .setProtectedHeader({ alg: ALG })
+                    .sign(secret)
+                const parts = jwt.split(".").slice(1).join(".")
+                qrCodeArea.innerHTML = ''
+                new QRCode(qrCodeArea, buildSignedUrl(parts))
+            }
+
+            (() => {
+                loadOrSetSecret()
+
+                textInput.addEventListener("input", makeQRCode)
+            })()
+
+        </script>
+</body>
+
+</html>
