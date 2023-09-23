@@ -38,7 +38,7 @@
 
         <script type="module">
             import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
-            import { buildSignedUrl, loadOrSetSecret, buildSecretUrl, uint8ArrayToBase64, base64ToUint8Array, jsonParse } from './utils.js'
+            import { buildSignedUrl, loadOrSetSecret, buildSecretUrl, uint8ArrayToBase64, base64ToUint8Array, setSecret, jsonParse } from './utils.js'
 
             const textInput = document.querySelector('#input')
             const qrCodeArea = document.querySelector('#qrCode')
@@ -53,6 +53,7 @@
                 const keyArr = new Uint8Array(keyBuf)
                 const keyStr = uint8ArrayToBase64(keyArr)
                 const keyUrl = buildSecretUrl(keyStr)
+                setSecret(keyStr)
                 prompt("Your secret URL, copy it:", keyUrl)
             }
 
