@@ -1,30 +1,34 @@
 export function loadSecret() {
-  if (!window.localStorage) return
+  if (!window.localStorage) {
+    alert('Local storage unavailable!')
+    return false
+  }
   const secret = window.localStorage.getItem('secret')
-  if (secret === null) return
+  if (secret === null) {
+    alert('No secret found!')
+    return false
+  }
   window.CURRENT_SECRET = secret
+  return true
 }
 
 export function setSecret(secret) {
   history.pushState(null, '', buildEmptyUrl())
   if (!window.localStorage) {
     alert('localStorage is not supported - cannot save the secret!')
+    return false
   }
   window.localStorage.setItem('secret', secret)
-  loadSecret()
+  return loadSecret()
 }
 
 export function loadOrSetSecret() {
   const url = new URL(String(document.location))
   const secret = url.searchParams.get('s')
   if (secret) {
-    setSecret(secret)
+    return setSecret(secret)
   } else {
-    loadSecret()
-  }
-
-  if (!window.CURRENT_SECRET) {
-    alert('Please set the secret!')
+    return loadSecret()
   }
 }
 
@@ -34,6 +38,10 @@ export function base64ToUint8Array(x) {
       .split('')
       .map((x) => x.charCodeAt(0))
   )
+}
+
+export function uint8ArrayToBase64(x) {
+  return btoa(String.fromCharCode(...x))
 }
 
 export function buildEmptyUrl() {
@@ -55,5 +63,13 @@ export function buildSignedUrl(s) {
   u.pathname = '/'
   u.search = ''
   u.searchParams.set('q', s)
+  return String(u)
+}
+
+export function buildSecretUrl(s) {
+  const u = new URL(String(document.location))
+  u.pathname = '/'
+  u.search = ''
+  u.searchParams.set('s', s)
   return String(u)
 }

@@ -38,13 +38,23 @@
 
         <script type="module">
             import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
-            import { buildSignedUrl, loadOrSetSecret, base64ToUint8Array, jsonParse } from './utils.js'
-
+            import { buildSignedUrl, loadOrSetSecret, buildSecretUrl, uint8ArrayToBase64, base64ToUint8Array, jsonParse } from './utils.js'
 
             const textInput = document.querySelector('#input')
             const qrCodeArea = document.querySelector('#qrCode')
-
             const ALG = "HS256"
+
+            async function generateAndSaveSecret() {
+                const key = await crypto.subtle.generateKey({
+                    name: "HMAC",
+                    hash: { name: "SHA-256" }
+                }, true, ["sign"])
+                const keyBuf = await crypto.subtle.exportKey("raw", key)
+                const keyArr = new Uint8Array(keyBuf)
+                const keyStr = uint8ArrayToBase64(keyArr)
+                const keyUrl = buildSecretUrl(keyStr)
+                prompt("Your secret URL, copy it:", keyUrl)
+            }
 
             async function makeQRCode() {
                 const payload = jsonParse(textInput.value)
@@ -54,7 +64,7 @@
 
                 const secret = base64ToUint8Array(window.CURRENT_SECRET)
                 const jwt = await new jose.SignJWT(payload)
-                    .setProtectedHeader({ alg: ALG })
+                    .setProtectedHeader({ alg: ALG, typ: "JWT" })
                     .sign(secret)
                 const parts = jwt.split(".").slice(1).join(".")
                 qrCodeArea.innerHTML = ''
@@ -62,7 +72,12 @@
             }
 
             (() => {
-                loadOrSetSecret()
+                if (!loadOrSetSecret()) {
+                    const result = prompt("Do you want to bootstrap a secret? OK to confirm.")
+                    if (result !== null) {
+                        generateAndSaveSecret().catch((e) => alert(`Error: ${e}`))
+                    }
+                }
 
                 textInput.addEventListener("input", makeQRCode)
             })()

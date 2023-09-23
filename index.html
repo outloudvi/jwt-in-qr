@@ -84,7 +84,7 @@
             (() => {
                 loadOrSetSecret()
 
-                const code = url.searchParams.get('q')
+                const code = new URL(String(document.location)).searchParams.get('q')
                 if (code) {
                     textInput.value = code
                     validateCode()
