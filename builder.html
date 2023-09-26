@@ -124,16 +124,16 @@
                 new QRCode(qrCodeArea, buildSignedUrl(parts))
             }
 
-            function preBuilder() {
+            function initEvents() {
                 textInput.addEventListener("input", makeQRCode)
                 qrCodeArea.addEventListener("click", openQRCodeLink)
                 document.querySelector("#btnGenerateSecret").addEventListener('click', regenerateSecret)
                 document.querySelector("#btnShareSecret").addEventListener('click', shareSecret)
                 document.querySelector('#btnClearSecret').addEventListener('click', clearSecret)
-                makeQRCode()
             }
 
             (() => {
+                initEvents()
                 if (!loadOrSetSecret()) {
                     const result = prompt("Do you want to bootstrap a secret? OK to confirm.")
                     if (result === null) {
@@ -141,12 +141,12 @@
                         return
                     }
                     generateAndSaveSecret().then(x => {
-                        preBuilder()
+                        makeQRCode()
                     }).catch((e) => alert(`Error: ${e}`))
                     return
                 }
 
-                preBuilder()
+                makeQRCode()
             })()
 
         </script>
