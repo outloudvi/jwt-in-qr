@@ -73,3 +73,14 @@ export function buildSecretUrl(s) {
   u.searchParams.set('s', s)
   return String(u)
 }
+
+export function userConfirm(promptText) {
+  const rnd = String(Math.floor(Math.random() * 1000)).padStart(4, '0')
+  const result = prompt(`${promptText}\nEnter ${rnd} and click OK to confirm.`)
+  if (result.trim() === rnd) {
+    return true
+  } else {
+    alert('Invalid confirmation code!')
+    return false
+  }
+}

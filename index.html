@@ -49,6 +49,7 @@
             ))
 
             async function validateCode() {
+                if (!window.CURRENT_SECRET) return
                 divResult.style.color = ""
                 divResult.style.backgroundColor = ""
                 const text = textInput.value
@@ -82,7 +83,10 @@
             }
 
             (() => {
-                loadOrSetSecret()
+                if (!loadOrSetSecret()) {
+                    divResult.style.backgroundColor = "#bbb"
+                    divResult.innerHTML = "<span>No secret! Ask for a secret link or <a href='/builder.html'>generate one</a>!</span>"
+                }
 
                 const code = new URL(String(document.location)).searchParams.get('q')
                 if (code) {

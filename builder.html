@@ -24,6 +24,7 @@
         }
 
         #qrCode img {
+            display: inline !important;
             margin: 0 auto;
             margin-top: 10px;
         }
@@ -32,13 +33,30 @@
 
 <body>
     <div id="app">
-        <h1>Ticket Builder</h1>
-        <input id="input" type="text" />
-        <div id="qrCode"></div>
+        <h1>Ticket Builder <sup><a href="/">Validator</a></sup></h1>
+
+        <input title="JSON Payload" id="input" type="text" value='{"a":1}' placeholder="JSON payload..." />
+        <br>
+        <span id="qrCode" style="cursor: pointer;"></span>
+        <br>
+        <div id="opArea" style="margin-top: 10px;">
+            <fieldset>
+                <legend>Admin area</legend>
+                <button id="btnGenerateSecret" type="button">
+                    (Re)generate secret
+                </button>
+                <button id="btnShareSecret" type="button">
+                    Share secret link
+                </button>
+                <button id="btnClearSecret" type="button">
+                    Clear secret
+                </button>
+            </fieldset>
+        </div>
 
         <script type="module">
             import * as jose from 'https://cdnjs.cloudflare.com/ajax/libs/jose/4.14.6/index.js'
-            import { buildSignedUrl, loadOrSetSecret, buildSecretUrl, uint8ArrayToBase64, base64ToUint8Array, setSecret, jsonParse } from './utils.js'
+            import { buildSignedUrl, loadOrSetSecret, buildSecretUrl, uint8ArrayToBase64, base64ToUint8Array, setSecret, jsonParse, userConfirm } from './utils.js'
 
             const textInput = document.querySelector('#input')
             const qrCodeArea = document.querySelector('#qrCode')
@@ -54,33 +72,81 @@
                 const keyStr = uint8ArrayToBase64(keyArr)
                 const keyUrl = buildSecretUrl(keyStr)
                 setSecret(keyStr)
-                prompt("Your secret URL, copy it:", keyUrl)
+                prompt("Your secret link, copy it:", keyUrl)
+            }
+
+            function regenerateSecret() {
+                if (!window.CURRENT_SECRET || userConfirm("You currently have a secret. Do you want to OVERRIDE the secret?")) {
+                    generateAndSaveSecret()
+                }
+            }
+
+            function openQRCodeLink() {
+                const url = qrCodeArea.getAttribute("title")
+                if (url)
+                    window.open(
+                        url, "_blank"
+                    )
+            }
+
+            function shareSecret() {
+                if (userConfirm("Are you sure? Whoever has this link will be able to validate and generate QR codes.")) {
+                    prompt("Your secret link, copy it:", buildSecretUrl(window.CURRENT_SECRET))
+                }
+            }
+
+            function clearSecret() {
+                if (userConfirm("Are you sure? That will make the QRs unable to validate!")) {
+                    window?.localStorage?.clear('secret')
+                    alert("Done.")
+                }
             }
 
             async function makeQRCode() {
+                qrCodeArea.innerHTML = ""
+
                 const payload = jsonParse(textInput.value)
                 if (payload === null) {
+                    textInput.style.backgroundColor = "#f99"
                     return
                 }
+                textInput.style.backgroundColor = ""
 
+                if (!window.CURRENT_SECRET) {
+                    alert("No secret found!")
+                    return
+                }
                 const secret = base64ToUint8Array(window.CURRENT_SECRET)
                 const jwt = await new jose.SignJWT(payload)
                     .setProtectedHeader({ alg: ALG, typ: "JWT" })
                     .sign(secret)
                 const parts = jwt.split(".").slice(1).join(".")
-                qrCodeArea.innerHTML = ''
                 new QRCode(qrCodeArea, buildSignedUrl(parts))
+            }
+
+            function preBuilder() {
+                textInput.addEventListener("input", makeQRCode)
+                qrCodeArea.addEventListener("click", openQRCodeLink)
+                document.querySelector("#btnGenerateSecret").addEventListener('click', regenerateSecret)
+                document.querySelector("#btnShareSecret").addEventListener('click', shareSecret)
+                document.querySelector('#btnClearSecret').addEventListener('click', clearSecret)
+                makeQRCode()
             }
 
             (() => {
                 if (!loadOrSetSecret()) {
                     const result = prompt("Do you want to bootstrap a secret? OK to confirm.")
-                    if (result !== null) {
-                        generateAndSaveSecret().catch((e) => alert(`Error: ${e}`))
+                    if (result === null) {
+                        qrCodeArea.innerText = "No secret!"
+                        return
                     }
+                    generateAndSaveSecret().then(x => {
+                        preBuilder()
+                    }).catch((e) => alert(`Error: ${e}`))
+                    return
                 }
 
-                textInput.addEventListener("input", makeQRCode)
+                preBuilder()
             })()
 
         </script>
