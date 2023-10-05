@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner</title>
+</head>
+
+<body>
+    <select id="selCameras" title="Camera">
+    </select>
+    <button id="btnStart">Start</button>
+    <button id="btnRecognize">Recognize</button>
+    <video id="vid" style="width: 90vw;"></video>
+    <canvas id="canv" height="1000" width="1000"></canvas>
+    <script>
+        const $vid = document.querySelector("#vid")
+        const $sel = document.querySelector('#selCameras')
+        const $canv = document.querySelector('#canv')
+
+        async function startRoutine() {
+            if (!("BarcodeDetector" in window)) {
+                alert("Barcode Detector is not supported by this browser.")
+                return
+            }
+
+            const supportedFormats = await BarcodeDetector.getSupportedFormats()
+            if (!supportedFormats.includes("qr_code")) {
+                alert("Native QR code recognition isn't supported.")
+                return
+            }
+
+            if (!('mediaDevices' in navigator)) {
+                alert("Error: mediaDevices not found")
+                return
+            }
+
+            const selection = $sel.value
+
+            if (!selection) {
+                const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+                const videoDevices = devices.filter(x => x.kind === "videoinput")
+                if (videoDevices.length === 0) {
+                    alert("No video devices found")
+                    return
+                }
+                $sel.innerHTML =
+                    videoDevices.map(
+                        x => `<option value="${x.deviceId}">
+                            ${x.deviceId.length < 12 ? x.deviceId : x.deviceId.slice(0, 12) + "..."}</option>`
+                    ).join('')
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    deviceId: selection
+                }
+            }).catch(e => {
+                alert(e)
+                return null
+            });
+
+            if (stream === null) {
+                return
+            }
+
+            $vid.srcObject = stream
+            $vid.play()
+
+
+        }
+
+        async function recognize() {
+            // const cv = new OffscreenCanvas($vid.videoWidth, $vid.videoHeight)
+            // cv.getContext('2d').drawImage($vid, 0, 0, cv.width, cv.height);
+            const barcodeDetector = new BarcodeDetector({
+                formats: ["qr_code"],
+            });
+
+            const results = await barcodeDetector.detect($vid)
+            console.log("Results:", results)
+        }
+
+        (async () => {
+            document.querySelector("#btnStart").addEventListener('click', startRoutine)
+            document.querySelector("#btnRecognize").addEventListener('click', recognize)
+        })()
+    </script>
+</body>
+
+</html>
